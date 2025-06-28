@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cassert>
 #include <iostream>
+#include <utility>
 
 #include "move.h"
 #include "board.h"
@@ -281,6 +282,19 @@ MoveGen::MoveGen(Board* board, History* history, SearchStack* searchStack, Move 
     counterMove = MOVE_NONE;
 }
 
+std::pair<Move, int> MoveGen::bestMove(int begin, int end) {
+    int best_score = moveListScores[begin];
+    int best_idx = begin;
+    for (int index = begin + 1; index < end; ++index) {
+        int score = moveListScores[index];
+        if (score > best_score) {
+            best_score = score;
+            best_idx = index;
+        }
+    }
+    return {moveList[best_idx], best_score};
+}
+
 Move MoveGen::nextMove() {
     assert((board->byColor[board->stm] & board->byPiece[Piece::KING]) > 0);
 
@@ -322,7 +336,6 @@ Move MoveGen::nextMove() {
         endIndex = generatedMoves;
 
         endIndex = scoreCaptures(beginIndex, endIndex);
-        sortMoves(moveList, moveListScores, beginIndex, endIndex);
 
         stage++;
         [[fallthrough]];
@@ -330,8 +343,7 @@ Move MoveGen::nextMove() {
     case STAGE_PLAY_GOOD_CAPTURES:
 
         while (returnedMoves < generatedMoves) {
-            Move move = moveList[returnedMoves];
-            int score = moveListScores[returnedMoves++];
+            auto [move, score] = bestMove(returnedMoves++, generatedMoves);
 
             bool goodCapture = probCut ? SEE(board, move, probCutThreshold) : SEE(board, move, -score / mpSeeDivisor);
             if (!goodCapture) {
@@ -388,7 +400,6 @@ Move MoveGen::nextMove() {
         endIndex = generatedMoves;
 
         endIndex = scoreQuiets(beginIndex, endIndex);
-        sortMoves(moveList, moveListScores, beginIndex, endIndex);
 
         stage++;
         [[fallthrough]];
@@ -396,7 +407,7 @@ Move MoveGen::nextMove() {
     case STAGE_PLAY_QUIETS:
 
         if (returnedMoves < generatedMoves)
-            return moveList[returnedMoves++];
+            return bestMove(returnedMoves++, generatedMoves).first;
 
         stage++;
         [[fallthrough]];
@@ -404,7 +415,7 @@ Move MoveGen::nextMove() {
     case STAGE_PLAY_BAD_CAPTURES:
 
         if (returnedBadCaptures < generatedBadCaptures)
-            return badCaptureList[returnedBadCaptures++];
+            return bestMove(returnedBadCaptures++, generatedBadCaptures).first;
 
         stage = STAGE_DONE;
     }

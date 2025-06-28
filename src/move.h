@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <utility>
 
 #include "types.h"
 
@@ -93,6 +94,7 @@ public:
     MoveGen(Board* board, History* history, SearchStack* searchStack, Move ttMove, int probCutThreshold, int depth);
 
     Move nextMove();
+    std::pair<Move, int> bestMove(int begin, int end);
 
     void skipQuietMoves() {
         skipQuiets = true;
