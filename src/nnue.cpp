@@ -37,27 +37,26 @@ NNZ nnz;
 #endif
 
 void refreshThreatAccumulator(NetworkData* networkData, int16_t* outputData, const ThreatInputs::FeatureList& threatFeatures) {
-    constexpr int TILE = 8;
+    constexpr int TILE = 10;
+    static_assert(L1_ITERATIONS % TILE == 0);
     const VecI16* biasVec = reinterpret_cast<const VecI16*>(networkData->inputBiases);
     VecI16* outputVec = reinterpret_cast<VecI16*>(outputData);
 
-#pragma GCC unroll 
     for (int i = 0; i < L1_ITERATIONS; i += TILE) {
-        int tile = std::min(TILE, L1_ITERATIONS - i);
         VecI16 registers[TILE];
 
-        for (int j = 0; j < tile; j++)
+        for (int j = 0; j < TILE; j++)
             registers[j] = biasVec[i + j];
 
         for (int featureIndex : threatFeatures) {
             const VecI16s* weightsVec = reinterpret_cast<const VecI16s*>(&networkData->inputThreatWeights[featureIndex * L1_SIZE]);
-            for (int j = 0; j < tile; j++) {
+            for (int j = 0; j < TILE; j++) {
                 VecI16 weights = convertEpi8Epi16(weightsVec[i + j]);
                 registers[j] = addEpi16(registers[j], weights);
             }
         }
 
-        for (int j = 0; j < tile; j++)
+        for (int j = 0; j < TILE; j++)
             outputVec[i + j] = registers[j];
     }
 }
