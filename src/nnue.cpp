@@ -37,11 +37,7 @@ NNZ nnz;
 #endif
 
 void refreshThreatAccumulator(NetworkData* networkData, int16_t* outputData, const ThreatInputs::FeatureList& threatFeatures) {
-#if defined(__AVX512F__) && defined(__AVX512BW__)
-    constexpr int TILE = L1_ITERATIONS;
-#else
     constexpr int TILE = 8;
-#endif
 
     const VecI16* biasVec = reinterpret_cast<const VecI16*>(networkData->inputBiases);
     VecI16* outputVec = reinterpret_cast<VecI16*>(outputData);
