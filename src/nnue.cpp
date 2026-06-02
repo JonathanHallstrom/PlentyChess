@@ -36,6 +36,35 @@ alignas(ALIGNMENT) uint16_t nnzLookup[256][8];
 NNZ nnz;
 #endif
 
+void refreshThreatAccumulator(NetworkData* networkData, int16_t* outputData, const ThreatInputs::FeatureList& threatFeatures) {
+#if defined(__AVX512F__) && defined(__AVX512BW__)
+    constexpr int TILE = L1_ITERATIONS;
+#else
+    constexpr int TILE = 8;
+#endif
+
+    const VecI16* biasVec = reinterpret_cast<const VecI16*>(networkData->inputBiases);
+    VecI16* outputVec = reinterpret_cast<VecI16*>(outputData);
+
+    for (int i = 0; i < L1_ITERATIONS; i += TILE) {
+        VecI16 registers[TILE];
+
+        for (int j = 0; j < TILE; j++)
+            registers[j] = biasVec[i + j];
+
+        for (int featureIndex : threatFeatures) {
+            const VecI16s* weightsVec = reinterpret_cast<const VecI16s*>(&networkData->inputThreatWeights[featureIndex * L1_SIZE]);
+            for (int j = 0; j < TILE; j++) {
+                VecI16 weights = convertEpi8Epi16(weightsVec[i + j]);
+                registers[j] = addEpi16(registers[j], weights);
+            }
+        }
+
+        for (int j = 0; j < TILE; j++)
+            outputVec[i + j] = registers[j];
+    }
+}
+
 void initNetworkData() {
     ThreatInputs::initialise();
 
@@ -78,15 +107,12 @@ void NNUE::reset(Board* board) {
 
 template<Color side>
 void NNUE::resetAccumulator(Board* board, Accumulator* acc) {
-    // Overwrite with biases
-    memcpy(acc->threatState[side], networkData->inputBiases, sizeof(networkData->inputBiases));
-    // Overwrite with zeroes
-    memset(acc->pieceState[side], 0, sizeof(acc->pieceState[side]));
-
     ThreatInputs::FeatureList threatFeatures;
     ThreatInputs::addThreatFeatures<side>(board, threatFeatures);
-    for (int featureIndex : threatFeatures)
-        addToAccumulator<true, side>(acc->threatState, acc->threatState, featureIndex);
+    refreshThreatAccumulator(networkData, acc->threatState[side], threatFeatures);
+
+    // Overwrite with zeroes
+    memset(acc->pieceState[side], 0, sizeof(acc->pieceState[side]));
 
     ThreatInputs::FeatureList pieceFeatures;
     ThreatInputs::addPieceFeatures(board, side, pieceFeatures, KING_BUCKET_LAYOUT);
@@ -186,13 +212,9 @@ void NNUE::refreshPieceFeatures(Accumulator* acc, KingBucketInfo* kingBucket) {
 
 template<Color side>
 void NNUE::refreshThreatFeatures(Accumulator* acc) {
-    // Overwrite with biases
-    memcpy(acc->threatState[side], networkData->inputBiases, sizeof(networkData->inputBiases));
-
     ThreatInputs::FeatureList threatFeatures;
     ThreatInputs::addThreatFeatures<side>(acc->board, threatFeatures);
-    for (int featureIndex : threatFeatures)
-        addToAccumulator<true, side>(acc->threatState, acc->threatState, featureIndex);
+    refreshThreatAccumulator(networkData, acc->threatState[side], threatFeatures);
 }
 
 template<Color side>
