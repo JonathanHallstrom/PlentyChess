@@ -340,6 +340,7 @@ void NNUE::applyThreatRows(int16_t(*inputData)[L1_SIZE], int16_t(*outputData)[L1
     VecI16* output = (VecI16*)outputData[side];
 
 #if defined(__AVX512F__) && defined(__AVX512BW__)
+compile error:)))))
     constexpr int TILE = L1_ITERATIONS;
 #else
     constexpr int TILE = 8;
