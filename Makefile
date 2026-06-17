@@ -81,7 +81,7 @@ ifeq ($(arch),)
 		HAS_AVX512 := $(shell .\detect_flags.bat $(CXX) __AVX512)
 		IS_ZEN1  := $(shell .\detect_flags.bat $(CXX) __znver1)
 		IS_ZEN2  := $(shell .\detect_flags.bat $(CXX) __znver2)
-		HAS_VBMI2 := $(shell .\detect_flags.bat $(CXX) __AVX512VBMI2)
+		HAS_VBMI2  := $(shell .\detect_flags.bat $(CXX) __AVX512VBMI2)
 	else
 		HAS_SSSE3 := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__SSSE3")
 		HAS_FMA := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__FMA")
@@ -90,7 +90,7 @@ ifeq ($(arch),)
 		HAS_AVX512 := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__AVX512")
 		IS_ZEN1  := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__znver1")
 		IS_ZEN2  := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__znver2")
-		HAS_VBMI2 := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__AVX512VBMI2")
+		HAS_VBMI2  := $(shell echo | $(CXX) -march=native -dM -E - | grep -c "__AVX512VBMI2")
 	endif
 
 # Select best build
